@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
 from uuid import UUID
 
 import jwt
@@ -48,3 +50,11 @@ def decode_access_token(token: str) -> UUID | None:
         return UUID(payload["sub"])
     except (jwt.PyJWTError, ValueError):
         return None
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

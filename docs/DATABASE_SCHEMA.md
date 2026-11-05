@@ -97,3 +97,19 @@ alembic downgrade -1                                       # verify reversibilit
 Review checklist: server defaults, nullability on existing data (backfill before `NOT NULL`), enum changes, index
 names, a correct `downgrade()`. `alembic/env.py` reads `DATABASE_URL` from app settings; never put a URL in
 `alembic.ini`. Never edit an already-applied revision — add a new one. Do not use `create_all()`.
+
+### `refresh_tokens`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK ? users.id | `ON DELETE CASCADE`; indexed |
+| token_hash | VARCHAR(64) | unique SHA-256 digest; raw token is never stored |
+| family_id | UUID | one login/device session; indexed |
+| expires_at | TIMESTAMPTZ | required |
+| revoked_at | TIMESTAMPTZ | nullable |
+| replaced_by_token_id | UUID FK ? refresh_tokens.id | nullable; `ON DELETE SET NULL` |
+| created_at | TIMESTAMPTZ | `now()` |
+| created_by_ip | VARCHAR(45) | nullable |
+| user_agent | VARCHAR(512) | nullable |
+
+Each login creates an independent family. Rotation keeps its family and serializes updates with `SELECT ... FOR UPDATE`.

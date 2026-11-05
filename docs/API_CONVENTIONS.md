@@ -86,3 +86,13 @@ String inputs are trimmed; extra unknown JSON fields are ignored.
 4. Correct status code (`201`/`204`), pagination via `PaginationParams`, bounded inputs.
 5. Tests for success, validation (422), 404, auth (401), and ownership/visibility.
 6. Update this file and `README.md`; note breaking changes to the frontend.
+
+## Authentication session endpoints
+
+| Method & path | Auth | Success | Notes |
+|---|---|---|---|
+| `POST /auth/refresh` | refresh cookie + allowed Origin | 200 `TokenResponse` | Rotates cookie; invalid/expired/reused token returns 401 and clears cookie |
+| `POST /auth/logout` | refresh cookie + allowed Origin | 200 | Idempotent; revokes current session and clears cookie |
+| `POST /auth/logout-all` | Bearer + allowed Origin | 200 | Revokes all sessions for current user; clears current cookie |
+
+Login and refresh return `TokenResponse {access_token, token_type:"bearer", expires_in}`. Refresh token is cookie-only and never appears in JSON. Cookie endpoints reject missing or unlisted Origin with 403 `csrf_origin_invalid`. Credentialed CORS requires exact configured origins. Browser clients must send credentials so the HttpOnly cookie is sent and updated.

@@ -9,6 +9,7 @@ from app.tests.conftest import TREASURER_EMAIL, TREASURER_PASSWORD
 
 PROTECTED = [
     ("GET", "/api/v1/auth/me"),
+    ("POST", "/api/v1/auth/logout-all"),
     ("GET", "/api/v1/friends"),
     ("POST", "/api/v1/friends"),
     ("GET", f"/api/v1/friends/{uuid.uuid4()}"),
@@ -32,10 +33,41 @@ def test_login_success_and_me(client, treasurer):
     assert res.status_code == 200
     body = res.json()
     assert body["token_type"] == "bearer" and body["expires_in"] > 0
+    assert "refresh_token" not in body
+    cookie = res.cookies.get(get_settings().refresh_token_cookie_name)
+    assert cookie
+    assert "httponly" in res.headers.get("set-cookie", "").lower()
     me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})
     assert me.status_code == 200
     assert me.json()["email"] == TREASURER_EMAIL
     assert "password_hash" not in me.json() and "password" not in me.json()
+
+
+def test_refresh_rotation_and_logout(client, db, treasurer):
+    from app.models import RefreshToken
+    from sqlalchemy import select
+
+    headers = {"Origin": get_settings().cors_origins[0]}
+    login = client.post("/api/v1/auth/login", json={"email": TREASURER_EMAIL, "password": TREASURER_PASSWORD})
+    old = login.cookies[get_settings().refresh_token_cookie_name]
+    rows = list(db.scalars(select(RefreshToken)))
+    assert len(rows) == 1 and rows[0].token_hash != old
+    assert len(rows[0].token_hash) == 64
+    refreshed = client.post("/api/v1/auth/refresh", headers=headers, cookies={get_settings().refresh_token_cookie_name: old})
+    assert refreshed.status_code == 200
+    new = refreshed.cookies[get_settings().refresh_token_cookie_name]
+    assert new and new != old
+    db.expire_all()
+    assert db.scalar(select(RefreshToken).where(RefreshToken.token_hash == rows[0].token_hash)).revoked_at is not None
+    logout = client.post("/api/v1/auth/logout", headers=headers, cookies={get_settings().refresh_token_cookie_name: new})
+    assert logout.status_code == 200
+
+
+def test_refresh_requires_allowed_origin(client, treasurer):
+    login = client.post("/api/v1/auth/login", json={"email": TREASURER_EMAIL, "password": TREASURER_PASSWORD})
+    response = client.post("/api/v1/auth/refresh", headers={"Origin": "https://evil.example"}, cookies=login.cookies)
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "csrf_origin_invalid"
 
 
 @pytest.mark.parametrize(

@@ -77,3 +77,13 @@ if a PUT endpoint is ever introduced.
 
 `.env` is git-ignored; `.env.example` holds placeholders only. Never commit `SECRET_KEY`, database passwords,
 tokens or hashes; never include them in logs, test output, docs or error messages.
+
+## Refresh rotation and sessions
+
+Login returns the existing access-token JSON shape and sets an HttpOnly refresh cookie. The opaque refresh token is generated from 256 bits of cryptographic randomness; only its SHA-256 hash is stored. Access tokens expire after `ACCESS_TOKEN_EXPIRE_MINUTES` (default 15). Refresh sessions expire after `REFRESH_TOKEN_EXPIRE_DAYS` (default 7).
+
+`POST /api/v1/auth/refresh` validates the refresh cookie and an `Origin` listed in `CORS_ORIGINS`, then atomically revokes the old token and creates its replacement in the same `family_id`. Each login creates a new family, allowing independent device sessions. Reuse of a rotated token revokes active tokens in that family and logs the family ID only. A parallel request blocked on the same database row within two seconds gets 401 without family revocation to avoid treating an ordinary simultaneous tab refresh as theft.
+
+`POST /api/v1/auth/logout` revokes the current cookie session if available and otherwise succeeds. `POST /api/v1/auth/logout-all` requires a valid Bearer access token and revokes every session for that user. Both clear the browser cookie.
+
+Cookie configuration: `REFRESH_TOKEN_COOKIE_NAME` defaults to `refresh_token`; `COOKIE_SECURE` defaults false for local HTTP and must be true in HTTPS production; `COOKIE_SAMESITE` accepts `lax`, `strict`, or `none` (`none` requires Secure in browsers); `COOKIE_DOMAIN` is optional. Cookie path is `/api/v1/auth`. Configure exact frontend origins in `CORS_ORIGINS`; credentialed CORS is enabled with no wildcard. The frontend must include credentials on refresh/logout requests. Cross-site production deployments need HTTPS and typically `SameSite=None; Secure`.

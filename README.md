@@ -44,7 +44,7 @@ docker exec patungan-db psql -U patungan -d patungan_db -c "CREATE DATABASE patu
 | `TEST_DATABASE_URL` | Test database. Its name **must end in `_test`** or the test suite refuses to start |
 | `CORS_ORIGINS` | Comma-separated allowed frontend origins |
 | `SECRET_KEY` | JWT signing key, ≥ 32 chars (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime, default 60 |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime, default 15 |
 
 `.env` is git-ignored; never commit real credentials.
 
@@ -187,3 +187,8 @@ nicknames/initials.
 * No friend deactivation (`is_active`); referenced friends simply cannot be deleted.
 * Public participant list is unpaginated (bounded by one row per friend per event).
 * Completed events still allow contribution changes.
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh lifetime, default 7 |
+| `REFRESH_TOKEN_COOKIE_NAME` | Cookie name, default `refresh_token` |
+| `COOKIE_SECURE` | Set true for HTTPS production |
+| `COOKIE_SAMESITE` | `lax`, `strict`, or `none` |
+| `COOKIE_DOMAIN` | Optional cookie domain |

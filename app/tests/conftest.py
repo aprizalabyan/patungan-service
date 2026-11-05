@@ -53,7 +53,7 @@ def _clean_tables(_migrated_schema):
     yield
     with engine.begin() as conn:
         conn.execute(
-            text("TRUNCATE contributions, events, friends, users RESTART IDENTITY CASCADE")
+            text("TRUNCATE refresh_tokens, contributions, events, friends, users RESTART IDENTITY CASCADE")
         )
 
 

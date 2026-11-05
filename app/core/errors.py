@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from app.core.config import get_settings
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
@@ -32,12 +33,17 @@ def _body(code: str, message: str, details: object | None = None) -> dict:
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
-    async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return JSONResponse(
+    async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
+        response = JSONResponse(
             _body(exc.code, exc.message, exc.details),
             status_code=exc.status_code,
             headers=exc.headers,
         )
+        if request.url.path == "/api/v1/auth/refresh" and exc.status_code == 401:
+            settings = get_settings()
+            response.delete_cookie(settings.refresh_token_cookie_name, path="/api/v1/auth", domain=settings.cookie_domain,
+                                   secure=settings.cookie_secure, httponly=True, samesite=settings.cookie_samesite)
+        return response
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:

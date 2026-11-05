@@ -17,7 +17,12 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = []
     secret_key: str
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+    refresh_token_cookie_name: str = "refresh_token"
+    cookie_secure: bool = False
+    cookie_samesite: str = "lax"
+    cookie_domain: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -31,6 +36,14 @@ class Settings(BaseSettings):
     def _secret_long_enough(cls, value: str) -> str:
         if len(value) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
+        return value
+
+    @field_validator("cookie_samesite")
+    @classmethod
+    def _valid_samesite(cls, value: str) -> str:
+        value = value.lower()
+        if value not in {"lax", "strict", "none"}:
+            raise ValueError("COOKIE_SAMESITE must be lax, strict, or none")
         return value
 
 

@@ -83,3 +83,5 @@ normalise Starlette `HTTPException` and `RequestValidationError` into the same e
   on the router, tests, docs.
 * New table/column: model → autogenerate + review migration → schema/service → tests → `DATABASE_SCHEMA.md`.
 * Cross-cutting concern (logging, rate limiting): `core/` or middleware in `main.py`.
+
+Refresh-token behavior: authentication services persist only SHA-256 hashes and rotate tokens transactionally. Database row locks serialize refresh requests; each login has its own device family. Logout revokes one family and logout-all revokes all families for the authenticated user.
